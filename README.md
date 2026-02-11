@@ -27,12 +27,16 @@ Imagem base para com FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e c
 # Sem Sidekick (padrao para Cloudflare)
 docker buildx build \
   --build-arg WITH_SIDEKICK=false \
-  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1 .
+  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1 \
+  --push \
+  .
 
 # Com Sidekick
 docker buildx build \
   --build-arg WITH_SIDEKICK=true \
-  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1-sidekick .
+  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1-sidekick \
+  --push \
+  .
 ```
 
 ### Build args

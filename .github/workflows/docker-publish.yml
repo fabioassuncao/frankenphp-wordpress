@@ -21,8 +21,95 @@ env:
   IMAGE_NAME: fabioassuncao/frankenphp-wordpress
 
 jobs:
-  build-and-push:
+  build:
+    runs-on: ${{ matrix.platform.runner }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - name: standard
+            with_sidekick: "false"
+            suffix: ""
+          - name: sidekick
+            with_sidekick: "true"
+            suffix: "-sidekick"
+        platform:
+          - runner: ubuntu-latest
+            os: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            os: linux/arm64
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract versions from Dockerfile
+        id: versions
+        run: |
+          PHP_VERSION="${{ github.event.inputs.php_version }}"
+          WP_VERSION="${{ github.event.inputs.wordpress_version }}"
+
+          if [ -z "$PHP_VERSION" ]; then
+            PHP_VERSION=$(grep -m1 '^ARG PHP_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
+          fi
+          if [ -z "$WP_VERSION" ]; then
+            WP_VERSION=$(grep -m1 '^ARG WORDPRESS_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
+          fi
+
+          echo "php_version=$PHP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "wp_version=$WP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=php${PHP_VERSION}-wp${WP_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform.os }}
+          build-args: |
+            WITH_SIDEKICK=${{ matrix.variant.with_sidekick }}
+          cache-from: type=gha,scope=${{ matrix.variant.name }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant.name }}-${{ matrix.platform.arch }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.variant.name }}-${{ matrix.platform.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    needs: build
 
     permissions:
       contents: read
@@ -30,12 +117,10 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - variant: standard
-            with_sidekick: "false"
+        variant:
+          - name: standard
             suffix: ""
-          - variant: sidekick
-            with_sidekick: "true"
+          - name: sidekick
             suffix: "-sidekick"
 
     steps:
@@ -65,32 +150,38 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ steps.versions.outputs.version_tag }}${{ matrix.suffix }},enable=${{ github.event_name != 'pull_request' }}
-            type=raw,value=latest${{ matrix.suffix }},enable=${{ github.event_name != 'pull_request' }}
-
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
+            type=raw,value=${{ steps.versions.outputs.version_tag }}${{ matrix.variant.suffix }}
+            type=raw,value=latest${{ matrix.variant.suffix }}
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push
-        uses: docker/build-push-action@v6
+      - name: Download amd64 digest
+        uses: actions/download-artifact@v4
         with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            WITH_SIDEKICK=${{ matrix.with_sidekick }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+          name: digests-${{ matrix.variant.name }}-amd64
+          path: /tmp/digests
+
+      - name: Download arm64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.variant.name }}-arm64
+          path: /tmp/digests
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect "$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
