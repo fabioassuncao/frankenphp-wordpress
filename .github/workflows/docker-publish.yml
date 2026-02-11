@@ -42,9 +42,6 @@ jobs:
           - runner: ubuntu-latest
             os: linux/amd64
             arch: amd64
-          - runner: ubuntu-24.04-arm
-            os: linux/arm64
-            arch: arm64
 
     steps:
       - name: Checkout
@@ -167,12 +164,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: digests-${{ matrix.variant.name }}-amd64
-          path: /tmp/digests
-
-      - name: Download arm64 digest
-        uses: actions/download-artifact@v4
-        with:
-          name: digests-${{ matrix.variant.name }}-arm64
           path: /tmp/digests
 
       - name: Create manifest list and push

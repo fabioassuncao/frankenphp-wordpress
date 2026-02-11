@@ -63,7 +63,7 @@ O workflow `.github/workflows/docker-publish.yml` builda e publica automaticamen
 
 ### Matrix de variantes
 
-O pipeline usa uma matrix strategy com 2 variantes (standard e sidekick), gerando imagens multi-arch (`linux/amd64` + `linux/arm64`) para cada uma.
+O pipeline usa uma matrix strategy com 2 variantes (standard e sidekick), gerando imagens apenas para `linux/amd64`.
 
 ### Tags geradas
 
