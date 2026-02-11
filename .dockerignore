@@ -1,0 +1,7 @@
+.git
+*.md
+LICENSE
+.idea
+.vscode
+.DS_Store
+Thumbs.db
