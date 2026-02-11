@@ -49,10 +49,10 @@ jobs:
           WP_VERSION="${{ github.event.inputs.wordpress_version }}"
 
           if [ -z "$PHP_VERSION" ]; then
-            PHP_VERSION=$(grep -m1 '^ARG PHP_VERSION=' Dockerfile | cut -d= -f2)
+            PHP_VERSION=$(grep -m1 '^ARG PHP_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
           fi
           if [ -z "$WP_VERSION" ]; then
-            WP_VERSION=$(grep -m1 '^ARG WORDPRESS_VERSION=' Dockerfile | cut -d= -f2)
+            WP_VERSION=$(grep -m1 '^ARG WORDPRESS_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
           fi
 
           echo "php_version=$PHP_VERSION" >> "$GITHUB_OUTPUT"
