@@ -1,6 +1,6 @@
 # FrankenPHP WordPress — Base Image
 
-Imagem base para o projeto Jornal Pequeno. Contém FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e configurações do servidor. Publicada no GHCR como `ghcr.io/jornalpequeno/frankenphp-wordpress`.
+Imagem base para o projeto Jornal Pequeno. Contém FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e configurações do servidor. Publicada no GHCR como `ghcr.io/fabioassuncao/frankenphp-wordpress`.
 
 ## Conteudo da imagem
 
@@ -27,14 +27,12 @@ Imagem base para o projeto Jornal Pequeno. Contém FrankenPHP, WordPress core, P
 # Sem Sidekick (padrao para Cloudflare)
 docker buildx build \
   --build-arg WITH_SIDEKICK=false \
-  -t ghcr.io/jornalpequeno/frankenphp-wordpress:php8.4-wp6.9.1 \
-  docker/base/
+  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1 .
 
 # Com Sidekick
 docker buildx build \
   --build-arg WITH_SIDEKICK=true \
-  -t ghcr.io/jornalpequeno/frankenphp-wordpress:php8.4-wp6.9.1-sidekick \
-  docker/base/
+  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1-sidekick .
 ```
 
 ### Build args
@@ -49,17 +47,44 @@ docker buildx build \
 
 ## CI/CD
 
-O workflow `.github/workflows/build-base-image.yml` builda e publica automaticamente no GHCR quando:
+O workflow `.github/workflows/docker-publish.yml` builda e publica automaticamente no GHCR.
 
-- Arquivos em `docker/base/` sao alterados na branch `main`
-- Dispatch manual via GitHub Actions (permite configurar versoes)
+### Triggers
 
-O build gera imagens multi-arch (`linux/amd64` + `linux/arm64`) para ambas as variantes (standard e sidekick).
+| Evento | Comportamento |
+|--------|---------------|
+| Push em `main` | Build + push de ambas variantes |
+| Pull Request para `main` | Build only (sem push), para validacao |
+| Dispatch manual | Build + push com versoes customizaveis (`php_version`, `wordpress_version`) |
+
+### Matrix de variantes
+
+O pipeline usa uma matrix strategy com 2 variantes (standard e sidekick), gerando imagens multi-arch (`linux/amd64` + `linux/arm64`) para cada uma.
+
+### Tags geradas
+
+| Evento | Variante Standard | Variante Sidekick |
+|--------|-------------------|-------------------|
+| Push `main` | `php8.4-wp6.9.1`, `latest` | `php8.4-wp6.9.1-sidekick`, `latest-sidekick` |
+| PR | nenhuma (build only) | nenhuma (build only) |
+| Manual | idem push (com versoes customizadas) | idem push (com versoes customizadas) |
+
+### Pull das imagens
+
+```bash
+# Standard (sem Sidekick)
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:latest
+
+# Com Sidekick
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1-sidekick
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:latest-sidekick
+```
 
 ## Estrutura de arquivos
 
 ```
-docker/base/
+.
 ├── Dockerfile                          # Multi-stage build (builder + final)
 ├── entrypoint.sh                       # CONTAINER_ROLE, CACHE_MODE, OPcache
 ├── .dockerignore

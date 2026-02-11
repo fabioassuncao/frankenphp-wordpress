@@ -1,0 +1,96 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      php_version:
+        description: "PHP version (leave empty to use Dockerfile default)"
+        required: false
+        default: ""
+      wordpress_version:
+        description: "WordPress version (leave empty to use Dockerfile default)"
+        required: false
+        default: ""
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: fabioassuncao/frankenphp-wordpress
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - variant: standard
+            with_sidekick: "false"
+            suffix: ""
+          - variant: sidekick
+            with_sidekick: "true"
+            suffix: "-sidekick"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract versions from Dockerfile
+        id: versions
+        run: |
+          PHP_VERSION="${{ github.event.inputs.php_version }}"
+          WP_VERSION="${{ github.event.inputs.wordpress_version }}"
+
+          if [ -z "$PHP_VERSION" ]; then
+            PHP_VERSION=$(grep -m1 '^ARG PHP_VERSION=' Dockerfile | cut -d= -f2)
+          fi
+          if [ -z "$WP_VERSION" ]; then
+            WP_VERSION=$(grep -m1 '^ARG WORDPRESS_VERSION=' Dockerfile | cut -d= -f2)
+          fi
+
+          echo "php_version=$PHP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "wp_version=$WP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=php${PHP_VERSION}-wp${WP_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.versions.outputs.version_tag }}${{ matrix.suffix }},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=latest${{ matrix.suffix }},enable=${{ github.event_name != 'pull_request' }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            WITH_SIDEKICK=${{ matrix.with_sidekick }}
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}

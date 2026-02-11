@@ -73,9 +73,6 @@ RUN curl -fsSL "https://br.wordpress.org/wordpress-${WORDPRESS_VERSION}-${WORDPR
     mv /tmp/wordpress/* /var/www/html/ && \
     rm -rf /tmp/wordpress /tmp/wordpress.zip
 
-# Remove default plugins and themes (replaced by project's own below)
-RUN rm -rf /var/www/html/wp-content/plugins /var/www/html/wp-content/themes
-
 WORKDIR /var/www/html
 
 # 5. Custom FrankenPHP binary (changes when Sidekick/Brotli modules change)
