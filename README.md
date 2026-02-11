@@ -1,6 +1,6 @@
 # FrankenPHP WordPress — Base Image
 
-Imagem base para o projeto Jornal Pequeno. Contém FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e configurações do servidor. Publicada no GHCR como `ghcr.io/fabioassuncao/frankenphp-wordpress`.
+Imagem base para com FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e configurações do servidor.
 
 ## Conteudo da imagem
 
