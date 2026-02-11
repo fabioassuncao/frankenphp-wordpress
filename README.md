@@ -24,19 +24,26 @@ Imagem base para com FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e c
 ## Build local
 
 ```bash
-# Sem Sidekick (padrao para Cloudflare)
-docker buildx build \
-  --build-arg WITH_SIDEKICK=false \
-  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1 \
-  --push \
-  .
+# Ver versoes e tags resolvidas
+make info
 
-# Com Sidekick
-docker buildx build \
-  --build-arg WITH_SIDEKICK=true \
-  -t ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.1-sidekick \
-  --push \
-  .
+# Build standard (sem Sidekick)
+make build
+
+# Build com Sidekick
+make build-sidekick
+
+# Build ambas variantes
+make build-all
+
+# Build + push ambas variantes
+make release-all
+
+# Smoke-test ambas variantes
+make check-all
+
+# Override de versoes
+make build PHP_VERSION=8.3 WP_VERSION=6.8.1
 ```
 
 ### Build args
@@ -51,19 +58,15 @@ docker buildx build \
 
 ## CI/CD
 
-O workflow `.github/workflows/docker-publish.yml` builda e publica automaticamente no GHCR.
+O workflow `.github/workflows/docker-publish.yml` delega toda a logica de build ao `Makefile`.
 
 ### Triggers
 
 | Evento | Comportamento |
 |--------|---------------|
-| Push em `main` | Build + push de ambas variantes |
-| Pull Request para `main` | Build only (sem push), para validacao |
-| Dispatch manual | Build + push com versoes customizaveis (`php_version`, `wordpress_version`) |
-
-### Matrix de variantes
-
-O pipeline usa uma matrix strategy com 2 variantes (standard e sidekick), gerando imagens apenas para `linux/amd64`.
+| Push em `main` | `make release-all` — build + push de ambas variantes |
+| Pull Request para `main` | `make build-all` — build only (sem push), para validacao |
+| Dispatch manual | `make release-all` com versoes customizaveis (`PHP_VERSION`, `WP_VERSION`) |
 
 ### Tags geradas
 
@@ -90,6 +93,7 @@ docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:latest-sidekick
 ```
 .
 ├── Dockerfile                          # Multi-stage build (builder + final)
+├── Makefile                            # Build, release e smoke-test targets
 ├── entrypoint.sh                       # CONTAINER_ROLE, CACHE_MODE, OPcache
 ├── .dockerignore
 ├── config/

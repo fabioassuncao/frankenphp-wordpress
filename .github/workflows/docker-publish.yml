@@ -8,69 +8,22 @@ on:
   workflow_dispatch:
     inputs:
       php_version:
-        description: "PHP version (leave empty to use Dockerfile default)"
+        description: "PHP version (leave empty for Dockerfile default)"
         required: false
-        default: ""
       wordpress_version:
-        description: "WordPress version (leave empty to use Dockerfile default)"
+        description: "WordPress version (leave empty for Dockerfile default)"
         required: false
-        default: ""
 
 permissions:
   contents: read
   packages: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/frankenphp-wordpress
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        variant:
-          - name: standard
-            with_sidekick: "false"
-            suffix: ""
-          - name: sidekick
-            with_sidekick: "true"
-            suffix: "-sidekick"
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Extract versions from Dockerfile
-        id: versions
-        run: |
-          PHP_VERSION="${{ github.event.inputs.php_version }}"
-          WP_VERSION="${{ github.event.inputs.wordpress_version }}"
-
-          if [ -z "$PHP_VERSION" ]; then
-            PHP_VERSION=$(grep -m1 '^ARG PHP_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
-          fi
-          if [ -z "$WP_VERSION" ]; then
-            WP_VERSION=$(grep -m1 '^ARG WORDPRESS_VERSION=' Dockerfile | cut -d= -f2 | tr -d '\r')
-          fi
-
-          echo "php_version=$PHP_VERSION" >> "$GITHUB_OUTPUT"
-          echo "wp_version=$WP_VERSION" >> "$GITHUB_OUTPUT"
-          echo "version_tag=php${PHP_VERSION}-wp${WP_VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ steps.versions.outputs.version_tag }}${{ matrix.variant.suffix }}
-            type=raw,value=latest${{ matrix.variant.suffix }}
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
         if: github.event_name != 'pull_request'
@@ -80,20 +33,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64
-          build-args: |
-            WITH_SIDEKICK=${{ matrix.variant.with_sidekick }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.variant.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant.name }}
-          push: ${{ github.event_name != 'pull_request' }}
+      - name: Build (PR validation)
+        if: github.event_name == 'pull_request'
+        run: make build-all
 
-      - name: Inspect image
+      - name: Expose GitHub Runtime
+        if: github.event_name != 'pull_request'
+        uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Build and Push
         if: github.event_name != 'pull_request'
         run: |
-          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.versions.outputs.version_tag }}${{ matrix.variant.suffix }}"
+          ARGS="CACHE_FROM_STD=type=gha,scope=standard CACHE_TO_STD=type=gha,mode=max,scope=standard"
+          ARGS="$ARGS CACHE_FROM_SK=type=gha,scope=sidekick CACHE_TO_SK=type=gha,mode=max,scope=sidekick"
+          [ -n "${{ github.event.inputs.php_version }}" ] && ARGS="$ARGS PHP_VERSION=${{ github.event.inputs.php_version }}" || true
+          [ -n "${{ github.event.inputs.wordpress_version }}" ] && ARGS="$ARGS WP_VERSION=${{ github.event.inputs.wordpress_version }}" || true
+          make release-all $ARGS
