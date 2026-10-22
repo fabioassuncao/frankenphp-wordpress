@@ -63,6 +63,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: make verify-all $MAKE_ARGS
 
+      # Push the exact images that were verified (no rebuild).
       - name: Push
         if: github.event_name != 'pull_request'
-        run: make release-all $MAKE_ARGS
+        run: make push-all $MAKE_ARGS

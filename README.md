@@ -64,7 +64,7 @@ O workflow `.github/workflows/docker-publish.yml` delega toda a logica de build 
 
 | Evento | Comportamento |
 |--------|---------------|
-| Push em `main` | `make build-all` + `make verify-all` + `make release-all` — build, verificação de segurança do PHP e push de ambas variantes |
+| Push em `main` | `make build-all` + `make verify-all` + `make push-all` — build, verificação de segurança do PHP e push das mesmas imagens verificadas |
 | Pull Request para `main` | `make build-all` + `make verify-all` — build e verificação (sem push), para validacao |
 | Dispatch manual | Mesmo fluxo do push, com versoes customizaveis (`PHP_VERSION`, `WP_VERSION`) |
 

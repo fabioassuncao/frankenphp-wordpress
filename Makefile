@@ -18,7 +18,7 @@ _CACHE_STD := $(if $(CACHE_FROM_STD),--cache-from $(CACHE_FROM_STD)) $(if $(CACH
 _CACHE_SK  := $(if $(CACHE_FROM_SK),--cache-from $(CACHE_FROM_SK)) $(if $(CACHE_TO_SK),--cache-to $(CACHE_TO_SK))
 
 .PHONY: help info build build-sidekick build-all release release-sidekick release-all \
-        check check-sidekick check-all verify verify-sidekick verify-all
+        check check-sidekick check-all verify verify-sidekick verify-all push push-sidekick push-all
 
 ## ── Help ────────────────────────────────────────────────────────────────────
 
@@ -102,6 +102,18 @@ release-sidekick: ## Build and push sidekick image
 		--push .
 
 release-all: release release-sidekick ## Build and push both variants
+
+## ── Push (publish images already built with --load) ─────────────────────────
+
+push: ## Push the locally built standard image
+	docker push $(IMAGE):$(TAG)
+	docker push $(IMAGE):latest
+
+push-sidekick: ## Push the locally built sidekick image
+	docker push $(IMAGE):$(TAG)-sidekick
+	docker push $(IMAGE):latest-sidekick
+
+push-all: push push-sidekick ## Push both locally built variants
 
 ## ── Smoke tests ─────────────────────────────────────────────────────────────
 
