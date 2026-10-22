@@ -18,8 +18,8 @@ Imagem base para com FrankenPHP, WordPress core, PHP 8.4, WP-CLI, mu-plugins e c
 
 | Tag | Descricao |
 |-----|-----------|
-| `php8.4-wp6.9.4` | Sem Sidekick — usar com `CACHE_MODE=cloudflare` |
-| `php8.4-wp6.9.4-sidekick` | Com Sidekick compilado — usar com `CACHE_MODE=sidekick` |
+| `php8.4-wp7.1.3` | Sem Sidekick — usar com `CACHE_MODE=cloudflare` |
+| `php8.4-wp7.1.3-sidekick` | Com Sidekick compilado — usar com `CACHE_MODE=sidekick` |
 
 ## Build local
 
@@ -51,7 +51,7 @@ make build PHP_VERSION=8.3 WP_VERSION=6.8.1
 | ARG | Padrao | Descricao |
 |-----|--------|-----------|
 | `PHP_VERSION` | `8.4` | Versao do PHP |
-| `WORDPRESS_VERSION` | `6.9.4` | Versao do WordPress |
+| `WORDPRESS_VERSION` | `7.1.3` | Versao do WordPress |
 | `WORDPRESS_LOCALE` | `pt_BR` | Locale do WordPress |
 | `WPCLI_VERSION` | `2.12.0` | Versao do WP-CLI |
 | `WITH_SIDEKICK` | `true` | Compilar Sidekick no binario FrankenPHP |
@@ -74,7 +74,7 @@ O `make verify-all` (`scripts/verify-php.sh`) falha o pipeline se o PHP da image
 
 | Evento | Variante Standard | Variante Sidekick |
 |--------|-------------------|-------------------|
-| Push `main` | `php8.4-wp6.9.4`, `latest` | `php8.4-wp6.9.4-sidekick`, `latest-sidekick` |
+| Push `main` | `php8.4-wp7.1.3`, `latest` | `php8.4-wp7.1.3-sidekick`, `latest-sidekick` |
 | PR | nenhuma (build only) | nenhuma (build only) |
 | Manual | idem push (com versoes customizadas) | idem push (com versoes customizadas) |
 
@@ -82,11 +82,11 @@ O `make verify-all` (`scripts/verify-php.sh`) falha o pipeline se o PHP da image
 
 ```bash
 # Standard (sem Sidekick)
-docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.4
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp7.1.3
 docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:latest
 
 # Com Sidekick
-docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp6.9.4-sidekick
+docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:php8.4-wp7.1.3-sidekick
 docker pull ghcr.io/fabioassuncao/frankenphp-wordpress:latest-sidekick
 ```
 
