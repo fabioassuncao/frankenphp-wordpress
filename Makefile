@@ -18,7 +18,7 @@ _CACHE_STD := $(if $(CACHE_FROM_STD),--cache-from $(CACHE_FROM_STD)) $(if $(CACH
 _CACHE_SK  := $(if $(CACHE_FROM_SK),--cache-from $(CACHE_FROM_SK)) $(if $(CACHE_TO_SK),--cache-to $(CACHE_TO_SK))
 
 .PHONY: help info build build-sidekick build-all release release-sidekick release-all \
-        check check-sidekick check-all
+        check check-sidekick check-all verify verify-sidekick verify-all
 
 ## ── Help ────────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ info: ## Show resolved versions and tags
 ## ── Build (local, --load) ───────────────────────────────────────────────────
 
 build: ## Build standard image locally
-	docker buildx build \
+	docker buildx build --pull \
 		--platform $(DEFAULT_ARCH) \
 		--build-arg WITH_SIDEKICK=false \
 		--build-arg PHP_VERSION=$(PHP_VERSION) \
@@ -65,7 +65,7 @@ build: ## Build standard image locally
 		--load .
 
 build-sidekick: ## Build sidekick image locally
-	docker buildx build \
+	docker buildx build --pull \
 		--platform $(DEFAULT_ARCH) \
 		--build-arg WITH_SIDEKICK=true \
 		--build-arg PHP_VERSION=$(PHP_VERSION) \
@@ -80,7 +80,7 @@ build-all: build build-sidekick ## Build both variants locally
 ## ── Release (build + push) ──────────────────────────────────────────────────
 
 release: ## Build and push standard image
-	docker buildx build \
+	docker buildx build --pull \
 		--platform $(DEFAULT_ARCH) \
 		--build-arg WITH_SIDEKICK=false \
 		--build-arg PHP_VERSION=$(PHP_VERSION) \
@@ -91,7 +91,7 @@ release: ## Build and push standard image
 		--push .
 
 release-sidekick: ## Build and push sidekick image
-	docker buildx build \
+	docker buildx build --pull \
 		--platform $(DEFAULT_ARCH) \
 		--build-arg WITH_SIDEKICK=true \
 		--build-arg PHP_VERSION=$(PHP_VERSION) \
@@ -116,3 +116,13 @@ check-sidekick: ## Smoke-test sidekick image
 	@docker run --rm $(IMAGE):$(TAG)-sidekick wp --version --allow-root
 
 check-all: check check-sidekick ## Smoke-test both variants
+
+## ── Security ────────────────────────────────────────────────────────────────
+
+verify: ## Fail if standard image ships a vulnerable PHP
+	@./scripts/verify-php.sh $(IMAGE):$(TAG)
+
+verify-sidekick: ## Fail if sidekick image ships a vulnerable PHP
+	@./scripts/verify-php.sh $(IMAGE):$(TAG)-sidekick
+
+verify-all: verify verify-sidekick ## Verify both variants

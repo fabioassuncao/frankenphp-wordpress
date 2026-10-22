@@ -37,15 +37,32 @@ jobs:
         if: github.event_name == 'pull_request'
         run: make build-all
 
+      - name: Verify patched PHP (PR validation)
+        if: github.event_name == 'pull_request'
+        run: make verify-all
+
       - name: Expose GitHub Runtime
         if: github.event_name != 'pull_request'
         uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Build and Push
+      - name: Resolve build arguments
         if: github.event_name != 'pull_request'
         run: |
           ARGS="CACHE_FROM_STD=type=gha,scope=standard CACHE_TO_STD=type=gha,mode=max,scope=standard"
           ARGS="$ARGS CACHE_FROM_SK=type=gha,scope=sidekick CACHE_TO_SK=type=gha,mode=max,scope=sidekick"
           [ -n "${{ github.event.inputs.php_version }}" ] && ARGS="$ARGS PHP_VERSION=${{ github.event.inputs.php_version }}" || true
           [ -n "${{ github.event.inputs.wordpress_version }}" ] && ARGS="$ARGS WP_VERSION=${{ github.event.inputs.wordpress_version }}" || true
-          make release-all $ARGS
+          echo "MAKE_ARGS=$ARGS" >> "$GITHUB_ENV"
+
+      # Build and verify locally before pushing, so a vulnerable PHP is never published.
+      - name: Build
+        if: github.event_name != 'pull_request'
+        run: make build-all $MAKE_ARGS
+
+      - name: Verify patched PHP
+        if: github.event_name != 'pull_request'
+        run: make verify-all $MAKE_ARGS
+
+      - name: Push
+        if: github.event_name != 'pull_request'
+        run: make release-all $MAKE_ARGS

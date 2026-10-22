@@ -64,9 +64,11 @@ O workflow `.github/workflows/docker-publish.yml` delega toda a logica de build 
 
 | Evento | Comportamento |
 |--------|---------------|
-| Push em `main` | `make release-all` — build + push de ambas variantes |
-| Pull Request para `main` | `make build-all` — build only (sem push), para validacao |
-| Dispatch manual | `make release-all` com versoes customizaveis (`PHP_VERSION`, `WP_VERSION`) |
+| Push em `main` | `make build-all` + `make verify-all` + `make release-all` — build, verificação de segurança do PHP e push de ambas variantes |
+| Pull Request para `main` | `make build-all` + `make verify-all` — build e verificação (sem push), para validacao |
+| Dispatch manual | Mesmo fluxo do push, com versoes customizaveis (`PHP_VERSION`, `WP_VERSION`) |
+
+O `make verify-all` (`scripts/verify-php.sh`) falha o pipeline se o PHP da imagem (CLI e o embutido no FrankenPHP) for vulnerável ao CVE-2026-109618/CVE-2026-109619 (PHP2Shell). Os builds usam `--pull` para sempre partir da imagem base mais recente.
 
 ### Tags geradas
 
